@@ -1,4 +1,5 @@
 
+import vm from 'vm';
 import { Rule } from '../types';
 
 export class RuleEngine {
@@ -10,29 +11,32 @@ export class RuleEngine {
     execute(rule: Rule): string {
         const { script, template } = rule;
         
-        // 基础上下文
-        const context: Record<string, any> = {
-            Date,
-            Math,
-            console,
-            // 可以在这里添加更多帮助函数
-        };
+        // 基础上下文，使用 Object.create(null) 减少原型链污染风险
+        const context: Record<string, any> = Object.create(null);
+        context.Date = Date;
+        context.Math = Math;
+        context.console = console;
+        // 可以在这里添加更多帮助函数
 
         let variables: Record<string, any> = {};
         
         if (script && script.trim()) {
             try {
-                // 使用 new Function 执行脚本
-                // 脚本中可以使用 context 中的变量
-                // 示例: const days = ...; return { days }; 或者 return `名称`;
+                // 使用 vm 模块在沙箱中执行脚本，提高安全性
+                // 相比 new Function，vm 上下文隔离性更好，防止访问 process 等全局变量
                 
-                const keys = Object.keys(context);
-                const values = Object.values(context);
+                // 构造沙箱上下文
+                const sandbox = vm.createContext(context);
+
+                // 包装脚本为立即执行函数以支持 return 语句
+                const code = `(function() { ${script} })()`;
                 
-                // 构造函数: function(Date, Math, console) { ...script... }
-                const fn = new Function(...keys, script);
-                
-                const result = fn(...values);
+                // 设置超时时间为 1000ms，防止死循环
+                // microtaskMode: 'afterEvaluate' 防止微任务队列阻塞
+                const result = vm.runInContext(code, sandbox, { 
+                    timeout: 1000,
+                    microtaskMode: 'afterEvaluate'
+                });
                 
                 // 情况 1: 脚本直接返回字符串 -> 作为最终群名
                 if (typeof result === 'string') {
@@ -55,12 +59,12 @@ export class RuleEngine {
 
     /**
      * 简单的模板替换
-     * 支持 ${varName} 格式
+     * 支持 ${varName} 格式，包括点号和连字符
      */
     private applyTemplate(template: string, variables: Record<string, any>): string {
         if (!template) return '';
         
-        return template.replace(/\$\{(\w+)\}/g, (match, key) => {
+        return template.replace(/\$\{([\w\-\.]+)\}/g, (match, key) => {
             return variables[key] !== undefined ? String(variables[key]) : match;
         });
     }

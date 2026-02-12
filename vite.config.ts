@@ -146,7 +146,7 @@ export default defineConfig({
         outDir: 'dist',
     },
     plugins: [nodeResolve(), copyAssetsPlugin(), napcatHmrPlugin({
-        token: 'jiubugaosuni',
+        token: 'awAafhj72qE22Ac',
         webui: {
             distDir: './src/webui/dist',
             targetDir: 'webui',
