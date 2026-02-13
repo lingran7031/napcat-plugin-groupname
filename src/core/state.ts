@@ -158,7 +158,13 @@ class PluginState {
 
     /** 获取数据文件完整路径 */
     getDataFilePath(filename: string): string {
-        return path.join(this.ctx.dataPath, filename);
+        // 安全检查：防止路径遍历攻击
+        // 仅允许文件名，不允许包含目录分隔符
+        const safeFilename = path.basename(filename);
+        if (safeFilename !== filename) {
+            this.logger.warn(`检测到潜在的路径遍历尝试: ${filename} -> ${safeFilename}`);
+        }
+        return path.join(this.ctx.dataPath, safeFilename);
     }
 
     // ==================== 通用数据文件读写 ====================
