@@ -72,9 +72,19 @@ export async function sendReply(
                 ? { user_id: String(event.user_id) }
                 : {}),
         };
-        await ctx.actions.call('send_msg', params, ctx.adapterName, ctx.pluginManager.config);
+        const result = await ctx.actions.call('send_msg', params, ctx.adapterName, ctx.pluginManager.config);
+        
+        // 调试模式下输出 API 返回结果
+        if (pluginState.config.debug) {
+            pluginState.logger.debug('send_msg API 返回结果:', JSON.stringify(result));
+        }
+        
         return true;
     } catch (error) {
+        // 调试模式下输出详细错误信息
+        if (pluginState.config.debug) {
+            pluginState.logger.debug('send_msg API 调用异常:', JSON.stringify(error));
+        }
         pluginState.logger.error('发送消息失败:', error);
         return false;
     }
@@ -94,9 +104,19 @@ export async function sendGroupMessage(
             message_type: 'group',
             group_id: String(groupId),
         };
-        await ctx.actions.call('send_msg', params, ctx.adapterName, ctx.pluginManager.config);
+        const result = await ctx.actions.call('send_msg', params, ctx.adapterName, ctx.pluginManager.config);
+        
+        // 调试模式下输出 API 返回结果
+        if (pluginState.config.debug) {
+            pluginState.logger.debug(`send_msg (群 ${groupId}) API 返回结果:`, JSON.stringify(result));
+        }
+        
         return true;
     } catch (error) {
+        // 调试模式下输出详细错误信息
+        if (pluginState.config.debug) {
+            pluginState.logger.debug(`send_msg (群 ${groupId}) API 调用异常:`, JSON.stringify(error));
+        }
         pluginState.logger.error('发送群消息失败:', error);
         return false;
     }
@@ -116,9 +136,19 @@ export async function sendPrivateMessage(
             message_type: 'private',
             user_id: String(userId),
         };
-        await ctx.actions.call('send_msg', params, ctx.adapterName, ctx.pluginManager.config);
+        const result = await ctx.actions.call('send_msg', params, ctx.adapterName, ctx.pluginManager.config);
+        
+        // 调试模式下输出 API 返回结果
+        if (pluginState.config.debug) {
+            pluginState.logger.debug(`send_msg (私聊 ${userId}) API 返回结果:`, JSON.stringify(result));
+        }
+        
         return true;
     } catch (error) {
+        // 调试模式下输出详细错误信息
+        if (pluginState.config.debug) {
+            pluginState.logger.debug(`send_msg (私聊 ${userId}) API 调用异常:`, JSON.stringify(error));
+        }
         pluginState.logger.error('发送私聊消息失败:', error);
         return false;
     }
@@ -157,14 +187,24 @@ export async function sendForwardMsg(
         } else {
             params.user_id = String(target);
         }
-        await ctx.actions.call(
+        const result = await ctx.actions.call(
             actionName as 'send_group_forward_msg',
             params as never,
             ctx.adapterName,
             ctx.pluginManager.config,
         );
+        
+        // 调试模式下输出 API 返回结果
+        if (pluginState.config.debug) {
+            pluginState.logger.debug(`${actionName} (目标: ${target}) API 返回结果:`, JSON.stringify(result));
+        }
+        
         return true;
     } catch (error) {
+        // 调试模式下输出详细错误信息
+        if (pluginState.config.debug) {
+            pluginState.logger.debug(`send_forward_msg (目标: ${target}) API 调用异常:`, JSON.stringify(error));
+        }
         pluginState.logger.error('发送合并转发消息失败:', error);
         return false;
     }

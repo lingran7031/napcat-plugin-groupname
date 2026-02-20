@@ -23,16 +23,7 @@ function formatUptime(uptimeMs: number): string {
 
 export default function StatusPage({ status, onRefresh }: StatusPageProps) {
     const [displayUptime, setDisplayUptime] = useState<string>('-')
-    const [currentTime, setCurrentTime] = useState<string>(new Date().toLocaleString())
     const [syncInfo, setSyncInfo] = useState<{ baseUptime: number; syncTime: number } | null>(null)
-
-    useEffect(() => {
-        const timer = setInterval(() => {
-            setCurrentTime(new Date().toLocaleString())
-        }, 1000)
-        return () => clearInterval(timer)
-    }, [])
-
     useEffect(() => {
         if (status?.uptime !== undefined && status.uptime > 0) {
             setSyncInfo({ baseUptime: status.uptime, syncTime: Date.now() })
@@ -79,13 +70,6 @@ export default function StatusPage({ status, onRefresh }: StatusPageProps) {
             bg: 'bg-primary/10',
         },
         {
-            label: '系统时间',
-            value: currentTime,
-            icon: <IconClock size={18} />,
-            color: 'text-blue-500',
-            bg: 'bg-blue-500/10',
-        },
-        {
             label: '今日处理',
             value: String(stats.todayProcessed),
             icon: <IconActivity size={18} />,
@@ -104,7 +88,7 @@ export default function StatusPage({ status, onRefresh }: StatusPageProps) {
     return (
         <div className="space-y-6">
             {/* 统计卡片 */}
-            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 stagger-children">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 stagger-children">
                 {statCards.map((card) => (
                     <div key={card.label} className="card p-4 hover-lift">
                         <div className="flex items-center justify-between mb-3">
@@ -131,9 +115,11 @@ export default function StatusPage({ status, onRefresh }: StatusPageProps) {
                     </button>
                 </div>
                 <div className="space-y-3">
-                    {/* <InfoRow label="命令前缀" value={config.commandPrefix} /> */}
-                    <InfoRow label="冷却时间" value={`${config.cooldownSeconds} 秒`} />
+                    {/* <InfoRow label="命令前缀" value={config.commandPrefix} /> 
+                    <InfoRow label="冷却时间" value={`${config.cooldownSeconds} 秒`} />*/}
                     <InfoRow label="调试模式" value={config.debug ? '开启' : '关闭'} />
+                    <InfoRow label="规则数量" value={`${status.enabledRuleCount}/${status.ruleCount}`} />
+                    <InfoRow label="群聊数量" value={`${status.enabledGroupCount}/${status.groupCount}`} />
                 </div>
             </div>
         </div>

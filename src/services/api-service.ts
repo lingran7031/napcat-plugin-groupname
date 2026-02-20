@@ -37,7 +37,40 @@ export function registerApiRoutes(ctx: NapCatPluginContext): void {
     // ==================== 插件信息（无鉴权）====================
 
     /** 获取插件状态 */
-    router.getNoAuth('/status', (_req, res) => {
+    router.getNoAuth('/status', async (_req, res) => {
+        // 获取群列表
+        let groupCount = 0;
+        let enabledGroupCount = 0;
+        try {
+            const groups = await ctx.actions.call(
+                'get_group_list',
+                {},
+                ctx.adapterName,
+                ctx.pluginManager.config
+            ) as Array<{ group_id: number; group_name: string; member_count: number; max_member_count: number }>;
+            
+            // 调试模式下输出 API 返回结果
+            if (pluginState.config.debug) {
+                ctx.logger.debug('get_group_list API 返回结果:', JSON.stringify(groups));
+            }
+            
+            if (groups && Array.isArray(groups)) {
+                groupCount = groups.length;
+                enabledGroupCount = groups.filter(g => pluginState.isGroupEnabled(String(g.group_id))).length;
+            }
+        } catch (e) {
+            // 调试模式下输出详细错误信息
+            if (pluginState.config.debug) {
+                ctx.logger.debug('get_group_list API 调用异常:', JSON.stringify(e));
+            }
+            ctx.logger.warn('获取群列表失败:', e);
+        }
+
+        // 获取规则数量
+        const rules = pluginState.config.rules || [];
+        const ruleCount = rules.length;
+        const enabledRuleCount = rules.filter(r => r.enabled).length;
+
         res.json({
             code: 0,
             data: {
@@ -46,6 +79,11 @@ export function registerApiRoutes(ctx: NapCatPluginContext): void {
                 uptimeFormatted: pluginState.getUptimeFormatted(),
                 config: pluginState.config,
                 stats: pluginState.stats,
+                // 添加规则和群统计
+                ruleCount,
+                enabledRuleCount,
+                groupCount,
+                enabledGroupCount,
             },
         });
     });
@@ -84,6 +122,11 @@ export function registerApiRoutes(ctx: NapCatPluginContext): void {
                 ctx.adapterName,
                 ctx.pluginManager.config
             ) as Array<{ group_id: number; group_name: string; member_count: number; max_member_count: number }>;
+            
+            // 调试模式下输出 API 返回结果
+            if (pluginState.config.debug) {
+                ctx.logger.debug('get_group_list API 返回结果:', JSON.stringify(groups));
+            }
 
             const groupsWithConfig = (groups || []).map((group) => {
                 const groupId = String(group.group_id);
@@ -98,6 +141,10 @@ export function registerApiRoutes(ctx: NapCatPluginContext): void {
 
             res.json({ code: 0, data: groupsWithConfig });
         } catch (e) {
+            // 调试模式下输出详细错误信息
+            if (pluginState.config.debug) {
+                ctx.logger.debug('get_group_list API 调用异常:', JSON.stringify(e));
+            }
             ctx.logger.error('获取群列表失败:', e);
             res.status(500).json({ code: -1, message: String(e) });
         }

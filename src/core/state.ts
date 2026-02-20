@@ -1,15 +1,3 @@
-/**
- * 全局状态管理模块（单例模式）
- *
- * 封装插件的配置持久化和运行时状态，提供在项目任意位置访问
- * ctx、config、logger 等对象的能力，无需逐层传递参数。
- *
- * 使用方法：
- *   import { pluginState } from '../core/state';
- *   pluginState.config.enabled;       // 读取配置
- *   pluginState.ctx.logger.info(...); // 使用日志
- */
-
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
@@ -23,10 +11,6 @@ function isObject(v: unknown): v is Record<string, unknown> {
     return v !== null && typeof v === 'object' && !Array.isArray(v);
 }
 
-/**
- * 配置清洗函数
- * 确保从文件读取的配置符合预期类型，防止运行时错误
- */
 function sanitizeConfig(raw: unknown): PluginConfig {
     if (!isObject(raw)) return { ...DEFAULT_CONFIG, groupConfigs: {} };
 
@@ -37,19 +21,16 @@ function sanitizeConfig(raw: unknown): PluginConfig {
     if (typeof raw.commandPrefix === 'string') out.commandPrefix = raw.commandPrefix;
     if (typeof raw.cooldownSeconds === 'number') out.cooldownSeconds = raw.cooldownSeconds;
 
-    // 群配置清洗
     if (isObject(raw.groupConfigs)) {
         for (const [groupId, groupConfig] of Object.entries(raw.groupConfigs)) {
             if (isObject(groupConfig)) {
                 const cfg: GroupConfig = {};
                 if (typeof groupConfig.enabled === 'boolean') cfg.enabled = groupConfig.enabled;
-                // TODO: 在这里添加你的群配置项清洗
                 out.groupConfigs[groupId] = cfg;
             }
         }
     }
 
-    // 清洗规则列表
     if (Array.isArray(raw.rules)) {
         out.rules = raw.rules.map((r: any) => ({
             id: String(r.id || crypto.randomUUID()),
@@ -69,44 +50,33 @@ function sanitizeConfig(raw: unknown): PluginConfig {
 // ==================== 插件全局状态类 ====================
 
 class PluginState {
-    /** NapCat 插件上下文（init 后可用） */
     private _ctx: NapCatPluginContext | null = null;
-
-    /** 插件配置 */
     config: PluginConfig = { ...DEFAULT_CONFIG };
-
-    /** 插件启动时间戳 */
     startTime: number = 0;
-
-    /** 机器人自身 QQ 号 */
     selfId: string = '';
-
-    /** 活跃的定时器 Map: jobId -> NodeJS.Timeout */
     timers: Map<string, ReturnType<typeof setInterval>> = new Map();
-
-    /** 运行时统计 */
     stats = {
         processed: 0,
         todayProcessed: 0,
         lastUpdateDay: new Date().toDateString(),
     };
 
-    /** 获取上下文（确保已初始化） */
     get ctx(): NapCatPluginContext {
-        if (!this._ctx) throw new Error('PluginState 尚未初始化，请先调用 init()');
+        if (!this._ctx) {
+            throw new Error('PluginState 尚未初始化，请先调用 init()');
+        }
         return this._ctx;
     }
 
-    /** 获取日志器的快捷方式 */
+    /** 安全检查 ctx 是否存在 */
+    hasCtx(): boolean {
+        return this._ctx !== null;
+    }
+
     get logger(): PluginLogger {
         return this.ctx.logger;
     }
 
-    // ==================== 生命周期 ====================
-
-    /**
-     * 初始化（在 plugin_init 中调用）
-     */
     init(ctx: NapCatPluginContext): void {
         this._ctx = ctx;
         this.startTime = Date.now();
@@ -115,40 +85,40 @@ class PluginState {
         this.fetchSelfId();
     }
 
-    /**
-     * 获取机器人自身 QQ 号（异步，init 时自动调用）
-     */
     private async fetchSelfId(): Promise<void> {
         try {
             const res = await this.ctx.actions.call(
                 'get_login_info', {}, this.ctx.adapterName, this.ctx.pluginManager.config
             ) as { user_id?: number | string };
+            
+            // 调试模式下输出 API 返回结果
+            if (this.config.debug) {
+                this.logger.debug('get_login_info API 返回结果:', JSON.stringify(res));
+            }
+            
             if (res?.user_id) {
                 this.selfId = String(res.user_id);
                 this.logger.debug("(｡·ω·｡) 机器人 QQ: " + this.selfId);
             }
         } catch (e) {
+            // 调试模式下输出详细错误信息
+            if (this.config.debug) {
+                this.logger.debug('get_login_info API 调用异常:', JSON.stringify(e));
+            }
             this.logger.warn("(；′⌒`) 获取机器人 QQ 号失败:", e);
         }
     }
 
-    /**
-     * 清理（在 plugin_cleanup 中调用）
-     */
     cleanup(): void {
-        // 清理所有定时器
         for (const [jobId, timer] of this.timers) {
             clearInterval(timer);
-            this.logger.debug(`(｡-ω-) 清理定时器: ${jobId}`);
         }
         this.timers.clear();
         this.saveConfig();
+        // 只有在保存完配置后，再销毁 ctx
         this._ctx = null;
     }
 
-    // ==================== 数据目录 ====================
-
-    /** 确保数据目录存在 */
     private ensureDataDir(): void {
         const dataPath = this.ctx.dataPath;
         if (!fs.existsSync(dataPath)) {
@@ -156,10 +126,7 @@ class PluginState {
         }
     }
 
-    /** 获取数据文件完整路径 */
     getDataFilePath(filename: string): string {
-        // 安全检查：防止路径遍历攻击
-        // 仅允许文件名，不允许包含目录分隔符
         const safeFilename = path.basename(filename);
         if (safeFilename !== filename) {
             this.logger.warn(`检测到潜在的路径遍历尝试: ${filename} -> ${safeFilename}`);
@@ -167,14 +134,6 @@ class PluginState {
         return path.join(this.ctx.dataPath, safeFilename);
     }
 
-    // ==================== 通用数据文件读写 ====================
-
-    /**
-     * 读取 JSON 数据文件
-     * 常用于订阅数据、定时任务配置、推送历史等持久化数据
-     * @param filename 数据文件名（如 'subscriptions.json'）
-     * @param defaultValue 文件不存在或解析失败时的默认值
-     */
     loadDataFile<T>(filename: string, defaultValue: T): T {
         const filePath = this.getDataFilePath(filename);
         try {
@@ -187,11 +146,6 @@ class PluginState {
         return defaultValue;
     }
 
-    /**
-     * 保存 JSON 数据文件
-     * @param filename 数据文件名
-     * @param data 要保存的数据
-     */
     saveDataFile<T>(filename: string, data: T): void {
         const filePath = this.getDataFilePath(filename);
         try {
@@ -201,18 +155,12 @@ class PluginState {
         }
     }
 
-    // ==================== 配置管理 ====================
-
-    /**
-     * 从磁盘加载配置
-     */
     loadConfig(): void {
         const configPath = this.ctx.configPath;
         try {
             if (configPath && fs.existsSync(configPath)) {
                 const raw = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
                 this.config = sanitizeConfig(raw);
-                // 加载统计信息
                 if (isObject(raw) && isObject(raw.stats)) {
                     Object.assign(this.stats, raw.stats);
                 }
@@ -228,9 +176,6 @@ class PluginState {
         }
     }
 
-    /**
-     * 保存配置到磁盘
-     */
     saveConfig(): void {
         if (!this._ctx) return;
         const configPath = this._ctx.configPath;
@@ -246,25 +191,16 @@ class PluginState {
         }
     }
 
-    /**
-     * 合并更新配置
-     */
     updateConfig(partial: Partial<PluginConfig>): void {
         this.config = { ...this.config, ...partial };
         this.saveConfig();
     }
 
-    /**
-     * 完整替换配置
-     */
     replaceConfig(config: PluginConfig): void {
         this.config = sanitizeConfig(config);
         this.saveConfig();
     }
 
-    /**
-     * 更新指定群的配置
-     */
     updateGroupConfig(groupId: string, config: Partial<GroupConfig>): void {
         this.config.groupConfigs[groupId] = {
             ...this.config.groupConfigs[groupId],
@@ -273,18 +209,10 @@ class PluginState {
         this.saveConfig();
     }
 
-    /**
-     * 检查群是否启用（默认启用，除非明确设置为 false）
-     */
     isGroupEnabled(groupId: string): boolean {
         return this.config.groupConfigs[groupId]?.enabled !== false;
     }
 
-    // ==================== 统计 ====================
-
-    /**
-     * 增加处理计数
-     */
     incrementProcessed(): void {
         const today = new Date().toDateString();
         if (this.stats.lastUpdateDay !== today) {
@@ -295,14 +223,10 @@ class PluginState {
         this.stats.processed++;
     }
 
-    // ==================== 工具方法 ====================
-
-    /** 获取运行时长（毫秒） */
     getUptime(): number {
         return Date.now() - this.startTime;
     }
 
-    /** 获取格式化的运行时长 */
     getUptimeFormatted(): string {
         const ms = this.getUptime();
         const s = Math.floor(ms / 1000);
@@ -317,5 +241,4 @@ class PluginState {
     }
 }
 
-/** 导出全局单例 */
 export const pluginState = new PluginState();

@@ -34,8 +34,8 @@ export function buildConfigSchema(ctx: NapCatPluginContext): PluginConfigSchema 
         // 插件信息头部
         ctx.NapCatConfig.html(`
             <div style="padding: 16px; background: #FB7299; border-radius: 12px; margin-bottom: 20px; color: white;">
-                <h3 style="margin: 0 0 6px 0; font-size: 18px; font-weight: 600;">插件模板</h3>
-                <p style="margin: 0; font-size: 13px; opacity: 0.85;">NapCat 插件开发模板，请根据需要修改配置</p>
+                <h3 style="margin: 0 0 6px 0; font-size: 18px; font-weight: 600;">群名称插件</h3>
+                <p style="margin: 0; font-size: 13px; opacity: 0.85;">群名称插件，用于管理群名称</p>
             </div>
         `),
         // 全局开关
@@ -45,7 +45,7 @@ export function buildConfigSchema(ctx: NapCatPluginContext): PluginConfigSchema 
         // 命令前缀
         //ctx.NapCatConfig.text('commandPrefix', '命令前缀', '#cmd', '触发命令的前缀，默认为 #cmd'),
         // 冷却时间
-        ctx.NapCatConfig.number('cooldownSeconds', '冷却时间（秒）', 60, '同一命令请求冷却时间，0 表示不限制')
+        //ctx.NapCatConfig.number('cooldownSeconds', '冷却时间（秒）', 60, '同一命令请求冷却时间，0 表示不限制')
         // TODO: 在这里添加你的配置项
     );
 }

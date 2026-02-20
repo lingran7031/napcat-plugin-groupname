@@ -44,7 +44,7 @@ export default function Sidebar({ currentPage, onPageChange }: SidebarProps) {
             {/* Footer */}
             <div className="px-3 pb-2">
                 <a
-                    href="https://github.com"
+                    href="https://github.com/lingran7031/napcat-plugin-groupname/issues"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="sidebar-item no-underline"

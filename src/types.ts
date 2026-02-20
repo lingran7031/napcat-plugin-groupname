@@ -21,7 +21,7 @@ export interface PluginConfig {
     /** 触发命令前缀，默认为 #cmd */
     //commandPrefix: string;
     /** 同一命令请求冷却时间（秒），0 表示不限制 */
-    cooldownSeconds: number;
+    /*cooldownSeconds: number;*/
     /** 按群的单独配置 */
     groupConfigs: Record<string, GroupConfig>;
     /** 定时任务规则列表 */

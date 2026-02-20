@@ -1,7 +1,7 @@
 {
   "name": "napcat-plugin-groupname",
   "plugin": "群名称插件",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "type": "module",
   "main": "index.mjs",
   "description": "NapCat 插件 - 群名称插件",

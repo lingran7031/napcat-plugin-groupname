@@ -10,6 +10,12 @@ export interface PluginStatus {
         todayProcessed: number
         lastUpdateDay: string
     }
+    // 规则统计
+    ruleCount: number
+    enabledRuleCount: number
+    // 群统计
+    groupCount: number
+    enabledGroupCount: number
 }
 
 export interface PluginConfig {
