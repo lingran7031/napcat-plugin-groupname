@@ -148,6 +148,10 @@ class PluginState {
 
     saveDataFile<T>(filename: string, data: T): void {
         const filePath = this.getDataFilePath(filename);
+        if (typeof filePath !== 'string' || filePath.includes('..')) {
+            this.logger.error('非法数据文件路径: ' + String(filePath));
+            return;
+        }
         try {
             fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
         } catch (e) {
@@ -179,6 +183,10 @@ class PluginState {
     saveConfig(): void {
         if (!this._ctx) return;
         const configPath = this._ctx.configPath;
+        if (typeof configPath !== 'string' || configPath.includes('..')) {
+            this._ctx.logger.error('非法配置文件路径: ' + String(configPath));
+            return;
+        }
         try {
             const configDir = path.dirname(configPath);
             if (!fs.existsSync(configDir)) {

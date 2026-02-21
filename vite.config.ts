@@ -15,7 +15,9 @@ const nodeModules = [
 ].flat();
 
 // 依赖排除（如有外部依赖需排除，在此添加）
-const external: string[] = [];
+// 将 node-schedule 标记为 external，避免其依赖（如 cron-parser / luxon）被打包进 dist，
+// 以减少编译产物中第三方内部实现代码被安全扫描误报的概率。
+const external: string[] = ['node-schedule'];
 
 /**
  * 递归复制目录
